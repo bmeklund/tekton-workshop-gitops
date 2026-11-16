@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tekton-workshop-cluster
+  namespace: openshift-gitops
+spec:
+  project: default
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      name: workshop-environment
+      namespace: openshift-gitops
+      jsonPointers:
+        - /spec/syncPolicy/automated/enabled
+      jqPathExpressions:
+        - '.spec.source.helm.parameters[] | select(.name == "workshop.userCount")'
+  source:
+    repoURL: https://github.com/bmeklund/tekton-workshop-gitops.git
+    targetRevision: main
+    path: clusters/workshop
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true

@@ -1,0 +1,53 @@
+workshop:
+  userCount: 3
+  userPrefix: user
+  namespacePrefix: tekton-workshop-
+
+  quota:
+    enabled: true
+    pods: "25"
+    persistentVolumeClaims: "10"
+    requestsStorage: 10Gi
+    requestsCpu: "4"
+    limitsCpu: "8"
+    requestsMemory: 8Gi
+    limitsMemory: 16Gi
+
+  limits:
+    enabled: true
+    defaultCpu: 500m
+    defaultMemory: 512Mi
+    defaultRequestCpu: 100m
+    defaultRequestMemory: 128Mi
+    maxCpu: "2"
+    maxMemory: 4Gi
+
+gitea:
+  enabled: true
+  name: gitea-workshop
+  namespace: gitea
+  imageTag: 1.27.3
+  adminUser: workshop-admin
+  adminEmail: workshop-admin@example.com
+  adminPasswordSecretName: gitea-admin-password
+  userPasswordSecretName: gitea-user-password
+  disableRegistration: true
+  allowCreateOrganization: false
+  volumeSize: 5Gi
+  postgresqlVolumeSize: 5Gi
+  storageClass: ""
+  resources:
+    gitea:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    postgresql:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

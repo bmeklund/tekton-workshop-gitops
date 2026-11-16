@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tekton-workshop
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: Cluster configuration for the shared Tekton workshop
+  sourceRepos:
+    - https://github.com/bmeklund/tekton-workshop-gitops.git
+    - https://github.com/rhpds/gitea-operator
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: openshift-operators
+    - server: https://kubernetes.default.svc
+      namespace: gitea-operator
+    - server: https://kubernetes.default.svc
+      namespace: gitea
+    - server: https://kubernetes.default.svc
+      namespace: tekton-workshop-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true

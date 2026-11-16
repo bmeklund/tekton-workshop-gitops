@@ -1,0 +1,86 @@
+{{ $count := int .Values.workshop.userCount }}
+{{ if lt $count 1 }}
+{{ fail "workshop.userCount must be at least 1" }}
+{{ end }}
+{{ $root := . }}
+{{ range $index := until $count }}
+{{ $number := add1 $index }}
+{{ $user := printf "%s%d" $root.Values.workshop.userPrefix $number }}
+{{ $namespace := printf "%s%s" $root.Values.workshop.namespacePrefix $user }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+  labels:
+    argocd.argoproj.io/managed-by: openshift-gitops
+    app.kubernetes.io/part-of: tekton-workshop
+    workshop.redhat.com/participant: {{ $user | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: participant-edit
+  namespace: {{ $namespace }}
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: {{ $user }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: participant-pipelines-as-code
+  namespace: {{ $namespace }}
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: {{ $user }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openshift-pipeline-as-code-clusterrole
+{{ if $root.Values.workshop.quota.enabled }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: workshop-quota
+  namespace: {{ $namespace }}
+spec:
+  hard:
+    pods: {{ $root.Values.workshop.quota.pods | quote }}
+    persistentvolumeclaims: {{ $root.Values.workshop.quota.persistentVolumeClaims | quote }}
+    requests.storage: {{ $root.Values.workshop.quota.requestsStorage | quote }}
+    requests.cpu: {{ $root.Values.workshop.quota.requestsCpu | quote }}
+    limits.cpu: {{ $root.Values.workshop.quota.limitsCpu | quote }}
+    requests.memory: {{ $root.Values.workshop.quota.requestsMemory | quote }}
+    limits.memory: {{ $root.Values.workshop.quota.limitsMemory | quote }}
+{{ end }}
+{{ if $root.Values.workshop.limits.enabled }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: workshop-container-limits
+  namespace: {{ $namespace }}
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: {{ $root.Values.workshop.limits.defaultCpu | quote }}
+        memory: {{ $root.Values.workshop.limits.defaultMemory | quote }}
+      defaultRequest:
+        cpu: {{ $root.Values.workshop.limits.defaultRequestCpu | quote }}
+        memory: {{ $root.Values.workshop.limits.defaultRequestMemory | quote }}
+      max:
+        cpu: {{ $root.Values.workshop.limits.maxCpu | quote }}
+        memory: {{ $root.Values.workshop.limits.maxMemory | quote }}
+{{ end }}
+---
+{{ end }}

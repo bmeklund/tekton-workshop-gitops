@@ -1,0 +1,47 @@
+{{ if .Values.gitea.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.gitea.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+  labels:
+    argocd.argoproj.io/managed-by: openshift-gitops
+    app.kubernetes.io/part-of: tekton-workshop
+---
+apiVersion: pfe.rhpds.com/v1
+kind: Gitea
+metadata:
+  name: {{ .Values.gitea.name }}
+  namespace: {{ .Values.gitea.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  giteaSsl: true
+  giteaImageTag: {{ .Values.gitea.imageTag | quote }}
+  giteaImagePullPolicy: IfNotPresent
+  giteaAdminUser: {{ .Values.gitea.adminUser | quote }}
+  giteaAdminEmail: {{ .Values.gitea.adminEmail | quote }}
+  giteaAdminPasswordSecretName: {{ .Values.gitea.adminPasswordSecretName | quote }}
+  giteaCreateUsers: true
+  giteaGenerateUserFormat: {{ printf "%s%%d" .Values.workshop.userPrefix | quote }}
+  giteaUserNumber: {{ int .Values.workshop.userCount }}
+  giteaUserPasswordSecretName: {{ .Values.gitea.userPasswordSecretName | quote }}
+  giteaDisableRegistration: {{ .Values.gitea.disableRegistration }}
+  giteaAllowCreateOrganization: {{ .Values.gitea.allowCreateOrganization }}
+  giteaWebhookAllowedHostList: "external,private"
+  giteaWebhookSkipTlsVerify: false
+  giteaVolumeSize: {{ .Values.gitea.volumeSize | quote }}
+  postgresqlVolumeSize: {{ .Values.gitea.postgresqlVolumeSize | quote }}
+  giteaVolumeStorageClass: {{ .Values.gitea.storageClass | quote }}
+  postgresqlVolumeStorageClass: {{ .Values.gitea.storageClass | quote }}
+  giteaCpuRequest: {{ .Values.gitea.resources.gitea.requests.cpu | quote }}
+  giteaMemoryRequest: {{ .Values.gitea.resources.gitea.requests.memory | quote }}
+  giteaCpuLimit: {{ .Values.gitea.resources.gitea.limits.cpu | quote }}
+  giteaMemoryLimit: {{ .Values.gitea.resources.gitea.limits.memory | quote }}
+  postgresqlCpuRequest: {{ .Values.gitea.resources.postgresql.requests.cpu | quote }}
+  postgresqlMemoryRequest: {{ .Values.gitea.resources.postgresql.requests.memory | quote }}
+  postgresqlCpuLimit: {{ .Values.gitea.resources.postgresql.limits.cpu | quote }}
+  postgresqlMemoryLimit: {{ .Values.gitea.resources.postgresql.limits.memory | quote }}
+{{ end }}

@@ -1,0 +1,86 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workshop-redhat-operators
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: tekton-workshop
+  source:
+    repoURL: https://github.com/bmeklund/tekton-workshop-gitops.git
+    targetRevision: main
+    path: platform/operators
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-operators
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workshop-gitea-operator
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: tekton-workshop
+  source:
+    repoURL: https://github.com/rhpds/gitea-operator
+    targetRevision: v2.3.2
+    path: OLMDeploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitea-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workshop-environment
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: tekton-workshop
+  source:
+    repoURL: https://github.com/bmeklund/tekton-workshop-gitops.git
+    targetRevision: main
+    path: charts/workshop-environment
+    helm:
+      releaseName: tekton-workshop
+      parameters:
+        - name: workshop.userCount
+          value: "1"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitea
+  syncPolicy:
+    automated:
+      enabled: false
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 30
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - SkipDryRunOnMissingResource=true
