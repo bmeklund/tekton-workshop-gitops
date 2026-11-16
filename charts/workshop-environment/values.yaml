@@ -1,5 +1,5 @@
 workshop:
-  userCount: 3
+  userCount: 1
   userPrefix: user
   namespacePrefix: tekton-workshop-
 

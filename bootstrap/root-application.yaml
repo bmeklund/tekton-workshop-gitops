@@ -10,8 +10,6 @@ spec:
       kind: Application
       name: workshop-environment
       namespace: openshift-gitops
-      jsonPointers:
-        - /spec/syncPolicy/automated/enabled
       jqPathExpressions:
         - '.spec.source.helm.parameters[] | select(.name == "workshop.userCount")'
   source:

@@ -22,6 +22,7 @@ Start with [docs/architecture.md](docs/architecture.md), then follow
 ```text
 bootstrap/                    One-time OpenShift GitOps installation and root app
 clusters/workshop/            Argo CD project and child Applications
+platform/foundation/          Namespaces required before secrets and workloads
 platform/operators/           Red Hat Operator subscriptions
 charts/workshop-environment/  Local renderer for the Gitea CR and N participant namespaces
 scripts/                      Runtime workshop-instance configuration
@@ -38,16 +39,19 @@ docs/                         Architecture and operational decisions
 - The workshop guide will need to select each pre-created project during Web
   Terminal initialization rather than requesting a new project.
 - The Git repository will be published at
-  `https://github.com/bmeklund/tekton-workshop-gitops.git`. Change both Argo CD
+  `https://github.com/bmeklund/tekton-workshop-gitops.git`. Update the Argo CD
   manifests before bootstrapping if the final URL differs.
-- The participant count is set per workshop with
-  `./scripts/configure-workshop.sh N`; no workshop-specific Git branch is
-  required.
+- The participant count is set per workshop on the live
+  `workshop-environment` Argo CD Application. The helper script performs the
+  same edit for administrators who prefer a CLI; no workshop-specific Git
+  branch is required. The default of five participants reconciles
+  automatically and requires no configuration.
 
-No Kubernetes Secret manifests are stored in Git. Gitea reads its admin and
-workshop-user passwords from bootstrap-created Secrets. Keycloak generates a
-unique OpenShift password for each participant; Gitea uses the separate common
-workshop password `openshift` for all generated Gitea users.
+The non-sensitive, common workshop credential `openshift` is stored in Git and
+used for all generated Gitea users. This is an intentional tradeoff for
+disposable workshop clusters that live for only a few hours. The privileged
+Gitea administrator password is still supplied separately and is not stored in
+Git. Keycloak generates a unique OpenShift password for each participant.
 
 The repository does not deploy the upstream Gitea Helm chart. The local chart
 only removes repetition from our own GitOps resources; the RHDP Gitea Operator

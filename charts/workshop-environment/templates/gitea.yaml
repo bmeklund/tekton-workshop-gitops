@@ -1,14 +1,4 @@
 {{ if .Values.gitea.enabled }}
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .Values.gitea.namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "-10"
-  labels:
-    argocd.argoproj.io/managed-by: openshift-gitops
-    app.kubernetes.io/part-of: tekton-workshop
----
 apiVersion: pfe.rhpds.com/v1
 kind: Gitea
 metadata:

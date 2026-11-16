@@ -1,6 +1,31 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: workshop-foundation
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  project: tekton-workshop
+  source:
+    repoURL: https://github.com/bmeklund/tekton-workshop-gitops.git
+    targetRevision: main
+    path: platform/foundation
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitea
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: workshop-redhat-operators
   namespace: openshift-gitops
   annotations:
@@ -71,7 +96,7 @@ spec:
     namespace: gitea
   syncPolicy:
     automated:
-      enabled: false
+      enabled: true
       prune: true
       selfHeal: true
     retry:
@@ -81,6 +106,5 @@ spec:
         factor: 2
         maxDuration: 3m
     syncOptions:
-      - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
       - SkipDryRunOnMissingResource=true

@@ -10,9 +10,11 @@ the workshop environment. Participants do not receive access to Argo CD.
 flowchart TD
     A[Cluster administrator] -->|1. apply bootstrap YAML| G[OpenShift GitOps Operator]
     G --> R[Root Argo CD Application]
+    R --> F[Foundation Application]
     R --> O[Red Hat Operators Application]
     R --> GO[Gitea Operator Application]
     R --> E[Workshop environment Application]
+    F --> FN[gitea namespace]
     O --> P[OpenShift Pipelines 1.21]
     O --> W[Web Terminal]
     GO --> GC[Gitea CRD and controller]
@@ -30,9 +32,11 @@ creates the root Application. Everything after that is reconciled from Git.
 
 ## Reconciliation boundaries
 
-The root Application creates a constrained `AppProject` and three child
+The root Application creates a constrained `AppProject` and four child
 Applications:
 
+- `workshop-foundation` creates the `gitea` namespace and the intentionally
+  public common Gitea workshop-user credential before workloads are added.
 - `workshop-redhat-operators` installs OpenShift Pipelines and Web Terminal from
   the `redhat-operators` catalog.
 - `workshop-gitea-operator` installs the RHDP Gitea Operator through its pinned
@@ -46,16 +50,18 @@ Applications:
 The environment Application uses retry and
 `SkipDryRunOnMissingResource=true`. This allows the first reconciliation to
 start while OLM is still installing the Gitea CRD; Argo CD retries until the CRD
-exists. Operator Applications are created at sync wave `0`, and the environment
-Application at wave `10`.
+exists. The foundation Application is created at sync wave `-5`, Operator
+Applications at wave `0`, and the environment Application at wave `10`.
 
-The environment Application is initially created with automated sync disabled.
-An administrator runs `scripts/configure-workshop.sh N`, which stores the count
-as a live Helm parameter and enables sync. The root Application ignores only
-that parameter and the child Application's auto-sync toggle, using
-`RespectIgnoreDifferences=true`; every other field continues to reconcile from
-Git. This makes the participant count an instance setting rather than a source
-branch change.
+The environment Application has automated sync enabled and defaults to five
+participants, so a standard workshop requires no activation step. An
+administrator changes `workshop.userCount` directly on the
+`workshop-environment` Application in Argo CD or the OpenShift console only when
+a different size is needed. The root Application ignores only that parameter,
+using `RespectIgnoreDifferences=true`; every other field continues to reconcile
+from Git. This makes the participant count an instance setting rather than a
+source branch change. `scripts/configure-workshop.sh` is an optional CLI
+convenience for the same operation.
 
 Increasing the live count is additive. Decreasing it is destructive because
 Argo CD pruning removes higher-numbered participant namespaces; the helper
@@ -131,17 +137,18 @@ for troubleshooting, not the preferred GitOps target.
 
 ## Secrets and identity
 
-Passwords must not be committed. Before the root Application is applied, the
-administrator creates two Secrets in `gitea`:
+The common generated-user password is intentionally stored in Git for this
+short-lived workshop environment. The foundation Application creates:
 
-- `gitea-admin-password` with key `adminPassword`;
-- `gitea-user-password` with key `userPassword`.
+- `gitea-user-password` with key `userPassword` and value `openshift`.
+
+After the foundation Application has created the `gitea` namespace, the
+administrator separately creates `gitea-admin-password` with key
+`adminPassword`. This privileged value is not committed.
 
 Keycloak generates a unique OpenShift password for each `user1` through `userN`
 identity. The Gitea Operator cannot mirror those individual values because it
-supports one common password for its generated users. For the initial workshop,
-populate `gitea-user-password` with the agreed common Gitea password
-`openshift`.
+supports one common password for its generated users.
 
 The systems therefore have deliberately separate credentials: participants use
 their unique Keycloak password for the OpenShift console and CLI, and
@@ -179,16 +186,16 @@ Pipeline workspace PVCs use the cluster default `StorageClass`. The workshop
 requests 500 MiB in its examples, so the default 10 GiB per-user storage quota
 leaves room for repeated runs and Web Terminal state.
 
-## Open decisions before the first cluster sync
+## Open decisions before workshop use
 
 1. Confirm the final Git repository URL and replace the provisional URL in the
-   two bootstrap/cluster manifests if needed.
-2. Run `scripts/configure-workshop.sh N` with the event's participant count.
+   bootstrap and cluster manifests if needed.
+2. Confirm the default count of five participants or change it on the live
+   `workshop-environment` Application. The helper script is optional.
 3. Verify that Keycloak and OpenShift OAuth authenticate `user1` through
    `userN` before syncing participant RoleBindings.
 4. Confirm a dynamically provisioning default `StorageClass` exists.
-5. Choose the workshop and Gitea admin passwords and create the bootstrap
-   Secrets.
+5. Choose the Gitea admin password and create its bootstrap Secret.
 6. Decide whether quotas need adjustment for the worker-node size and maximum
    concurrent attendance.
 7. Decide whether the cluster is dedicated enough to disable the default
