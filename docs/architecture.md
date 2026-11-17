@@ -47,21 +47,26 @@ Applications:
   `workshop.userCount` value controls both Gitea users and participant
   namespaces.
 
+For a one-user environment, the chart passes the literal username `user1` to
+the Gitea Operator. For counts greater than one, it passes the numbered
+`user%d` format. This distinction is required because the Operator treats the
+format literally when `giteaUserNumber` is `1`.
+
 The environment Application uses retry and
 `SkipDryRunOnMissingResource=true`. This allows the first reconciliation to
 start while OLM is still installing the Gitea CRD; Argo CD retries until the CRD
 exists. The foundation Application is created at sync wave `-5`, Operator
 Applications at wave `0`, and the environment Application at wave `10`.
 
-The environment Application has automated sync enabled and defaults to five
-participants, so a standard workshop requires no activation step. An
-administrator changes `workshop.userCount` directly on the
-`workshop-environment` Application in Argo CD or the OpenShift console only when
-a different size is needed. The root Application ignores only that parameter,
-using `RespectIgnoreDifferences=true`; every other field continues to reconcile
-from Git. This makes the participant count an instance setting rather than a
-source branch change. `scripts/configure-workshop.sh` is an optional CLI
-convenience for the same operation.
+The environment Application has automated sync enabled. The single Git default
+for the participant count is `workshop.userCount` in the chart's `values.yaml`.
+An administrator can add a live `workshop.userCount` Helm parameter to the
+`workshop-environment` Application when one cluster needs a different size. The
+root Application preserves runtime Helm parameters using
+`RespectIgnoreDifferences=true`; every other field continues to reconcile from
+Git. `scripts/configure-workshop.sh` is an optional CLI convenience for adding
+or updating that override. Removing the live parameter returns the cluster to
+the single value in `values.yaml`.
 
 Increasing the live count is additive. Decreasing it is destructive because
 Argo CD pruning removes higher-numbered participant namespaces; the helper
@@ -165,6 +170,10 @@ of truth.
 - No custom `cluster-admin` binding is added for Argo CD. The default OpenShift
   GitOps instance is intended for cluster configuration and receives only the
   permissions managed by the Operator.
+- Each participant namespace contains a dedicated Role and RoleBinding granting
+  the Argo CD application-controller management of only `ResourceQuota` and
+  `LimitRange` objects in that namespace. This enables the participant
+  guardrails without adding cluster-wide permissions.
 - The Argo CD project allows only the two known Git repositories and the
   workshop destination namespaces.
 - Gitea self-registration and organization creation are disabled.
@@ -190,8 +199,8 @@ leaves room for repeated runs and Web Terminal state.
 
 1. Confirm the final Git repository URL and replace the provisional URL in the
    bootstrap and cluster manifests if needed.
-2. Confirm the default count of five participants or change it on the live
-   `workshop-environment` Application. The helper script is optional.
+2. Confirm `workshop.userCount` in the chart's `values.yaml`, or override it on
+   the live `workshop-environment` Application. The helper script is optional.
 3. Verify that Keycloak and OpenShift OAuth authenticate `user1` through
    `userN` before syncing participant RoleBindings.
 4. Confirm a dynamically provisioning default `StorageClass` exists.
@@ -213,15 +222,20 @@ oc get tektonconfig config
 oc get route -n openshift-pipelines
 oc get route -n gitea
 oc get gitea -n gitea
+oc auth can-i create resourcequotas -n tekton-workshop-user1 \
+  --as=system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
+oc auth can-i create limitranges -n tekton-workshop-user1 \
+  --as=system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
 oc auth can-i create tasks.tekton.dev -n tekton-workshop-user1 --as=user1
 oc auth can-i create repositories.pipelinesascode.tekton.dev \
   -n tekton-workshop-user1 --as=user1
 oc auth can-i create projectrequests.project.openshift.io --as=user1
 ```
 
-The first two permission checks must return `yes`. Project creation should
-return `no` if self-provisioning was disabled for a dedicated workshop cluster;
-otherwise record the broader cluster policy as an accepted exception.
+The controller and participant permission checks must return `yes`. Project
+creation should return `no` if self-provisioning was disabled for a dedicated
+workshop cluster; otherwise record the broader cluster policy as an accepted
+exception.
 
 ## Source alignment
 

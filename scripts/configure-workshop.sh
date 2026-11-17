@@ -38,20 +38,11 @@ if ! oc get application "$application_name" -n "$gitops_namespace" >/dev/null 2>
   exit 1
 fi
 
-current_count=$(oc get application "$application_name" -n "$gitops_namespace" \
-  -o jsonpath='{.spec.source.helm.parameters[?(@.name=="workshop.userCount")].value}')
-auto_sync_enabled=$(oc get application "$application_name" -n "$gitops_namespace" \
-  -o jsonpath='{.spec.syncPolicy.automated.enabled}')
-first_parameter_name=$(oc get application "$application_name" -n "$gitops_namespace" \
-  -o jsonpath='{.spec.source.helm.parameters[0].name}')
+current_count=$(oc get namespaces \
+  -l workshop.redhat.com/participant \
+  -o name | wc -l | tr -d '[:space:]')
 
-if [[ $first_parameter_name != "workshop.userCount" ]]; then
-  echo "Expected workshop.userCount to be the first Helm parameter." >&2
-  echo "Refusing to patch an unexpected Application structure." >&2
-  exit 1
-fi
-
-if [[ $auto_sync_enabled == "true" && $current_count =~ ^[1-9][0-9]*$ ]] \
+if [[ $current_count =~ ^[1-9][0-9]*$ ]] \
   && (( user_count < current_count )) && [[ $allow_decrease != "--allow-decrease" ]]; then
   echo "Refusing to reduce the user count from $current_count to $user_count." >&2
   echo "Argo CD pruning would delete the higher-numbered participant namespaces." >&2
@@ -59,8 +50,27 @@ if [[ $auto_sync_enabled == "true" && $current_count =~ ^[1-9][0-9]*$ ]] \
   exit 1
 fi
 
-patch=$(printf '[{"op":"replace","path":"/spec/source/helm/parameters/0/value","value":"%s"},{"op":"replace","path":"/spec/syncPolicy/automated/enabled","value":true}]' \
-  "$user_count")
+parameter_index=-1
+parameter_count=0
+while IFS= read -r parameter_name; do
+  [[ -z $parameter_name ]] && continue
+  if [[ $parameter_name == "workshop.userCount" ]]; then
+    parameter_index=$parameter_count
+  fi
+  ((parameter_count += 1))
+done < <(oc get application "$application_name" -n "$gitops_namespace" \
+  -o jsonpath='{range .spec.source.helm.parameters[*]}{.name}{"\n"}{end}')
+
+if (( parameter_index >= 0 )); then
+  patch=$(printf '[{"op":"replace","path":"/spec/source/helm/parameters/%d/value","value":"%s"},{"op":"add","path":"/spec/syncPolicy/automated/enabled","value":true}]' \
+    "$parameter_index" "$user_count")
+elif (( parameter_count == 0 )); then
+  patch=$(printf '[{"op":"add","path":"/spec/source/helm/parameters","value":[{"name":"workshop.userCount","value":"%s"}]},{"op":"add","path":"/spec/syncPolicy/automated/enabled","value":true}]' \
+    "$user_count")
+else
+  patch=$(printf '[{"op":"add","path":"/spec/source/helm/parameters/-","value":{"name":"workshop.userCount","value":"%s"}},{"op":"add","path":"/spec/syncPolicy/automated/enabled","value":true}]' \
+    "$user_count")
+fi
 
 oc patch application "$application_name" \
   -n "$gitops_namespace" \

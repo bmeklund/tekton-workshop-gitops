@@ -88,9 +88,6 @@ spec:
     path: charts/workshop-environment
     helm:
       releaseName: tekton-workshop
-      parameters:
-        - name: workshop.userCount
-          value: "1"
   destination:
     server: https://kubernetes.default.svc
     namespace: gitea

@@ -87,10 +87,14 @@ removes this remaining manual credential step.
 
 ## 5. Adjust the participant count when needed
 
-The environment automatically reconciles five users by default. No action is
-required for a five-person workshop. For a different workshop size, open the
-`workshop-environment` Application in Argo CD or the OpenShift console and edit
-its Helm parameter:
+The committed `workshop.userCount` in
+`charts/workshop-environment/values.yaml` is the only Git default and
+reconciles automatically. Change that value before committing when the Git
+default should change.
+
+To override the count for only one running cluster, open the
+`workshop-environment` Application in Argo CD or the OpenShift console and add
+or edit its Helm parameter:
 
 ```yaml
 spec:
@@ -111,6 +115,10 @@ CD immediately renders and reconciles the Gitea CR, Gitea users, participant
 namespaces, RBAC, quotas, and limits. The root
 Application is configured to preserve this instance-level count while
 continuing to manage every other field from Git.
+
+A live Helm parameter takes precedence over `values.yaml`. To return a cluster
+to the Git default, remove `workshop.userCount` from the Application's Helm
+parameters in Argo CD.
 
 For administrators who prefer a terminal, the helper performs exactly the same
 edit:

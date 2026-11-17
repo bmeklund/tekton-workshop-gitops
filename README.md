@@ -41,11 +41,10 @@ docs/                         Architecture and operational decisions
 - The Git repository will be published at
   `https://github.com/bmeklund/tekton-workshop-gitops.git`. Update the Argo CD
   manifests before bootstrapping if the final URL differs.
-- The participant count is set per workshop on the live
-  `workshop-environment` Argo CD Application. The helper script performs the
-  same edit for administrators who prefer a CLI; no workshop-specific Git
-  branch is required. The default of five participants reconciles
-  automatically and requires no configuration.
+- `workshop.userCount` in `charts/workshop-environment/values.yaml` is the
+  single Git source for the participant count. A live Argo CD parameter or the
+  helper script can override it for one running cluster without requiring a
+  workshop-specific branch.
 
 The non-sensitive, common workshop credential `openshift` is stored in Git and
 used for all generated Gitea users. This is an intentional tradeoff for

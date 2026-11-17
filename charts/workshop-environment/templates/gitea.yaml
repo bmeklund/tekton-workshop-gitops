@@ -15,7 +15,11 @@ spec:
   giteaAdminEmail: {{ .Values.gitea.adminEmail | quote }}
   giteaAdminPasswordSecretName: {{ .Values.gitea.adminPasswordSecretName | quote }}
   giteaCreateUsers: true
+{{ if eq (int .Values.workshop.userCount) 1 }}
+  giteaGenerateUserFormat: {{ printf "%s1" .Values.workshop.userPrefix | quote }}
+{{ else }}
   giteaGenerateUserFormat: {{ printf "%s%%d" .Values.workshop.userPrefix | quote }}
+{{ end }}
   giteaUserNumber: {{ int .Values.workshop.userCount }}
   giteaUserPasswordSecretName: {{ .Values.gitea.userPasswordSecretName | quote }}
   giteaDisableRegistration: {{ .Values.gitea.disableRegistration }}

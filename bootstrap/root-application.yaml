@@ -10,8 +10,8 @@ spec:
       kind: Application
       name: workshop-environment
       namespace: openshift-gitops
-      jqPathExpressions:
-        - '.spec.source.helm.parameters[] | select(.name == "workshop.userCount")'
+      jsonPointers:
+        - /spec/source/helm/parameters
   source:
     repoURL: https://github.com/bmeklund/tekton-workshop-gitops.git
     targetRevision: main

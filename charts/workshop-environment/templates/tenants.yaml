@@ -19,6 +19,44 @@ metadata:
     workshop.redhat.com/participant: {{ $user | quote }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workshop-argocd-guardrails
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-9"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - resourcequotas
+      - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workshop-argocd-guardrails
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-8"
+subjects:
+  - kind: ServiceAccount
+    name: openshift-gitops-argocd-application-controller
+    namespace: openshift-gitops
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: workshop-argocd-guardrails
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: participant-edit
